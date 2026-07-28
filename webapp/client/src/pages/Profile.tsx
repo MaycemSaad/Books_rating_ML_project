@@ -32,6 +32,19 @@ export function Profile() {
 
   if (!user) return null;
 
+  // Hide "filters only" searches (no query text).
+  const visibleSearches = (history?.searches ?? []).filter((s) => s.query.trim() !== "");
+
+  // Show each book only once — keep the most recent prediction per title + author.
+  const uniquePredictions = predictions.filter((p, i) => {
+    const key = `${p.title.trim().toLowerCase()}|${p.authors.trim().toLowerCase()}`;
+    return (
+      predictions.findIndex(
+        (q) => `${q.title.trim().toLowerCase()}|${q.authors.trim().toLowerCase()}` === key,
+      ) === i
+    );
+  });
+
   return (
     <div className="space-y-10">
       <div className="card flex items-center gap-4 p-6">
@@ -46,11 +59,11 @@ export function Profile() {
       </div>
 
       <Section title="Recent searches">
-        {history?.searches.length ? (
+        {visibleSearches.length ? (
           <div className="flex flex-wrap gap-2">
-            {history.searches.map((s) => (
+            {visibleSearches.map((s) => (
               <Link key={s.id} to={`/catalog?q=${encodeURIComponent(s.query)}`} className="chip hover:bg-parchment-200">
-                {s.query || "(filters only)"}
+                {s.query}
               </Link>
             ))}
           </div>
@@ -60,9 +73,9 @@ export function Profile() {
       </Section>
 
       <Section title="Prediction history">
-        {predictions.length ? (
+        {uniquePredictions.length ? (
           <div className="card divide-y divide-parchment-200">
-            {predictions.map((p) => (
+            {uniquePredictions.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-forest-800">{p.title}</div>

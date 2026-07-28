@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Sliding cover carousel (defined here so Vite HMR applies it without a
+   dev-server restart, unlike tailwind.config.js changes). */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 45s linear infinite;
+}
+
 @layer base {
   body {
     @apply bg-parchment-50 font-sans text-stone-700 antialiased;

@@ -48,6 +48,10 @@ export interface PredictInput {
   publisher: string;
 }
 
+export interface BatchPredictionRow extends PredictInput {
+  predicted_rating: number;
+}
+
 export const api = {
   signup: (data: { name: string; email: string; password: string }) =>
     request<{ token: string; user: User }>("/auth/signup", {
@@ -84,6 +88,11 @@ export const api = {
 
   predict: (data: PredictInput) =>
     request<PredictionResult>("/predict", { method: "POST", body: JSON.stringify(data) }),
+  predictBatch: (items: PredictInput[]) =>
+    request<{ predictions: BatchPredictionRow[]; count: number; model_name?: string }>(
+      "/predict/batch",
+      { method: "POST", body: JSON.stringify({ items }) },
+    ),
   predictHistory: () =>
     request<{ items: { id: string; title: string; authors: string; predictedRating: number; createdAt: string }[] }>(
       "/predict/history",

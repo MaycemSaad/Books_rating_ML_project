@@ -5,6 +5,8 @@ import type { Book } from "../types";
 import { BookCard } from "../components/BookCard";
 import { Icon, type IconName } from "../components/Icon";
 import { useAuth } from "../context/AuthContext";
+import { coverGradient, coverUrl } from "../lib/format";
+import { useInView } from "../lib/animation";
 
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1920&q=80";
@@ -17,58 +19,35 @@ const DOMAINS: {
   to: string;
   tone: "forest" | "gold";
 }[] = [
-  {
-    icon: "layers",
-    title: "Book Catalog",
-    desc: "Browse 11,000+ titles with full-text search and advanced filters.",
-    tag: "Explore",
-    to: "/catalog",
-    tone: "forest",
-  },
-  {
-    icon: "gauge",
-    title: "Rating Predictor",
-    desc: "Estimate any book's rating from its details in seconds.",
-    tag: "Smart insight",
-    to: "/predict",
-    tone: "gold",
-  },
-  {
-    icon: "sparkles",
-    title: "Recommendations",
-    desc: "Personalized picks that learn from your searches and reading.",
-    tag: "For you",
-    to: "/recommendations",
-    tone: "forest",
-  },
-  {
-    icon: "user",
-    title: "Your Library",
-    desc: "Favorites, search history and past predictions in one place.",
-    tag: "Account",
-    to: "/profile",
-    tone: "gold",
-  },
+  { icon: "layers", title: "Book Catalog", desc: "Browse 11,000+ titles with full-text search and advanced filters.", tag: "Explore", to: "/catalog", tone: "forest" },
+  { icon: "gauge", title: "Rating Predictor", desc: "Estimate any book's rating from its details in seconds.", tag: "Smart insight", to: "/predict", tone: "gold" },
+  { icon: "sparkles", title: "Recommendations", desc: "Personalized picks that learn from your searches and reading.", tag: "For you", to: "/recommendations", tone: "forest" },
+  { icon: "user", title: "Your Library", desc: "Favorites, search history and past predictions in one place.", tag: "Account", to: "/profile", tone: "gold" },
 ];
 
 export function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [featured, setFeatured] = useState<Book[]>([]);
+  const [carousel, setCarousel] = useState<Book[]>([]);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
     api.recommendations(8).then((r) => setFeatured(r.items)).catch(() => setFeatured([]));
   }, [user]);
 
+  useEffect(() => {
+    api
+      .searchBooks({ sort: "relevance", order: "desc", pageSize: 24, page: 1 })
+      .then((r) => setCarousel(r.items.filter((b) => coverUrl(b))))
+      .catch(() => setCarousel([]));
+  }, []);
+
   return (
     <div className="space-y-20">
       {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl border border-forest-800 shadow-card">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
-        />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${HERO_IMAGE})` }} />
         <div className="absolute inset-0 bg-gradient-to-br from-forest-900/95 via-forest-800/85 to-forest-700/70" />
         <div className="relative px-6 py-20 sm:px-14 sm:py-24">
           <div className="max-w-2xl animate-fade-up">
@@ -99,16 +78,10 @@ export function Home() {
               </button>
             </form>
             <div className="mt-5 flex flex-wrap gap-3 text-sm">
-              <Link
-                to="/predict"
-                className="btn border border-white/25 text-white hover:bg-white/10"
-              >
+              <Link to="/predict" className="btn border border-white/25 text-white hover:bg-white/10">
                 Try the rating predictor
               </Link>
-              <Link
-                to="/recommendations"
-                className="btn border border-white/25 text-white hover:bg-white/10"
-              >
+              <Link to="/recommendations" className="btn border border-white/25 text-white hover:bg-white/10">
                 Personalized picks
               </Link>
             </div>
@@ -116,90 +89,125 @@ export function Home() {
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          { k: "11,127", v: "Books in catalog" },
-          { k: "440K+", v: "Books analyzed" },
-          { k: "0–5", v: "Rating scale" },
-          { k: "Instant", v: "Rating estimates" },
-        ].map((s) => (
-          <div key={s.v} className="card p-6 text-center">
-            <div className="font-display text-4xl font-bold text-forest-700">{s.k}</div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-wide text-stone-500">{s.v}</div>
-          </div>
-        ))}
-      </section>
+      {/* Sliding cover carousel */}
+      {carousel.length > 0 && <CoverMarquee books={carousel} />}
 
       {/* Domains */}
-      <section>
-        <div className="mb-10 text-center">
-          <span className="eyebrow">Our domains</span>
-          <h2 className="section-title mt-4 text-4xl">
-            Explore everything <span className="italic text-gold-500">BookWise</span> offers
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-stone-500">
-            A complete reading companion — from discovery to your next favorite.
-          </p>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {DOMAINS.map((d) => (
-            <Link
-              key={d.title}
-              to={d.to}
-              className="card group flex flex-col p-6 transition duration-300 hover:-translate-y-1.5 hover:border-forest-300 hover:shadow-card"
-            >
-              <span
-                className={`grid h-14 w-14 place-items-center rounded-2xl shadow-sm ${
-                  d.tone === "gold" ? "bg-gold-100 text-gold-600" : "bg-forest-50 text-forest-600"
-                }`}
-              >
-                <Icon name={d.icon} size={26} />
-              </span>
-              <span
-                className={`mt-5 inline-flex w-fit rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                  d.tone === "gold"
-                    ? "bg-gold-100 text-gold-600"
-                    : "bg-forest-50 text-forest-600"
-                }`}
-              >
-                {d.tag}
-              </span>
-              <h3 className="mt-3 font-display text-lg font-bold text-forest-800">{d.title}</h3>
-              <p className="mt-1.5 flex-1 text-sm leading-relaxed text-stone-500">{d.desc}</p>
-              <span className="mt-4 text-sm font-semibold text-forest-600 transition group-hover:text-gold-500">
-                Open →
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Featured */}
-      <section>
-        <div className="mb-6 flex items-end justify-between">
-          <div>
-            <span className="eyebrow">Handpicked</span>
-            <h2 className="section-title mt-3">
-              {user ? "Recommended for you" : "Highly rated favorites"}
+      <Reveal>
+        <section>
+          <div className="mb-10 text-center">
+            <span className="eyebrow">Our domains</span>
+            <h2 className="section-title mt-4 text-4xl">
+              Explore everything <span className="italic text-gold-500">BookWise</span> offers
             </h2>
-            <p className="mt-1 text-sm text-stone-500">
-              {user ? "Based on what you search and open" : "Log in to unlock personalized recommendations"}
+            <p className="mx-auto mt-3 max-w-xl text-stone-500">
+              A complete reading companion — from discovery to your next favorite.
             </p>
           </div>
-          <Link
-            to="/recommendations"
-            className="text-sm font-semibold text-forest-600 hover:text-gold-500"
-          >
-            View all →
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-          {featured.map((b) => (
-            <BookCard key={b.id} book={b} />
-          ))}
-        </div>
-      </section>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {DOMAINS.map((d) => (
+              <Link
+                key={d.title}
+                to={d.to}
+                className="card group flex flex-col p-6 transition duration-300 hover:-translate-y-1.5 hover:border-forest-300 hover:shadow-card"
+              >
+                <span className={`grid h-14 w-14 place-items-center rounded-2xl shadow-sm ${d.tone === "gold" ? "bg-gold-100 text-gold-600" : "bg-forest-50 text-forest-600"}`}>
+                  <Icon name={d.icon} size={26} />
+                </span>
+                <span className={`mt-5 inline-flex w-fit rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d.tone === "gold" ? "bg-gold-100 text-gold-600" : "bg-forest-50 text-forest-600"}`}>
+                  {d.tag}
+                </span>
+                <h3 className="mt-3 font-display text-lg font-bold text-forest-800">{d.title}</h3>
+                <p className="mt-1.5 flex-1 text-sm leading-relaxed text-stone-500">{d.desc}</p>
+                <span className="mt-4 text-sm font-semibold text-forest-600 transition group-hover:text-gold-500">
+                  Open →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </Reveal>
+
+      {/* Featured */}
+      <Reveal>
+        <section>
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <span className="eyebrow">Handpicked</span>
+              <h2 className="section-title mt-3">{user ? "Recommended for you" : "Highly rated favorites"}</h2>
+              <p className="mt-1 text-sm text-stone-500">
+                {user ? "Based on what you search and open" : "Log in to unlock personalized recommendations"}
+              </p>
+            </div>
+            <Link to="/recommendations" className="text-sm font-semibold text-forest-600 hover:text-gold-500">
+              View all →
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+            {featured.map((b) => (
+              <BookCard key={b.id} book={b} />
+            ))}
+          </div>
+        </section>
+      </Reveal>
     </div>
+  );
+}
+
+/* ---- reveal-on-scroll wrapper -------------------------------------------- */
+
+function Reveal({ children }: { children: React.ReactNode }) {
+  const [ref, inView] = useInView<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${inView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ---- sliding cover carousel ---------------------------------------------- */
+
+function CoverMarquee({ books }: { books: Book[] }) {
+  const loop = [...books, ...books]; // duplicate for a seamless loop
+  return (
+    <section className="group relative overflow-hidden rounded-3xl border border-parchment-200 bg-parchment-50 py-6">
+      <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused]">
+        {loop.map((b, i) => (
+          <MiniCover key={`${b.id}-${i}`} book={b} />
+        ))}
+      </div>
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-parchment-50 to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-parchment-50 to-transparent" />
+    </section>
+  );
+}
+
+function MiniCover({ book }: { book: Book }) {
+  const [failed, setFailed] = useState(false);
+  const src = coverUrl(book, "M");
+  return (
+    <Link to={`/book/${book.id}`} className="mr-4 block w-24 shrink-0 transition-transform hover:-translate-y-1 sm:w-28" title={book.title}>
+      <div className="aspect-[2/3] overflow-hidden rounded-lg shadow-sm ring-1 ring-black/5">
+        {src && !failed ? (
+          <img
+            src={src}
+            alt={book.title}
+            loading="lazy"
+            onError={() => setFailed(true)}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            className="flex h-full w-full items-center justify-center p-2 text-center text-[11px] font-semibold leading-tight text-white"
+            style={{ background: coverGradient(book.title) }}
+          >
+            {book.title.slice(0, 40)}
+          </div>
+        )}
+      </div>
+    </Link>
   );
 }

@@ -62,6 +62,21 @@ def get_predictor():
     return _predictor
 
 
+def get_metadata(predictor) -> dict:
+    """Return the artifact's metadata if present, else sensible fallbacks.
+
+    The exported artifact is currently a bare scikit-learn ``Pipeline`` and has
+    no ``.metadata`` attribute, so we derive defaults from the model filename to
+    keep ``/health`` and ``/predict`` working either way.
+    """
+    meta = getattr(predictor, "metadata", None)
+    if isinstance(meta, dict):
+        return meta
+    stem = MODEL_PATH.stem.lower()
+    model_name = "XGBoost" if "xgboost" in stem else "CatBoost" if "catboost" in stem else "model"
+    return {"model_name": model_name, "target": "average_rating", "training_rows": None}
+
+
 class BookFeatures(BaseModel):
     """Raw book attributes expected by the model."""
 
@@ -84,11 +99,12 @@ class PredictionResponse(BaseModel):
 def health():
     try:
         predictor = get_predictor()
+        meta = get_metadata(predictor)
         return {
             "status": "ok",
-            "model": predictor.metadata.get("model_name"),
-            "target": predictor.metadata.get("target"),
-            "training_rows": predictor.metadata.get("training_rows"),
+            "model": meta.get("model_name"),
+            "target": meta.get("target"),
+            "training_rows": meta.get("training_rows"),
         }
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=503, detail=str(exc))
@@ -102,10 +118,50 @@ def predict(features: BookFeatures):
         value = float(predictor.predict(row)[0])
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Prediction failed: {exc}")
+    value = max(0.0, min(5.0, value))  # keep predictions on the 0-5 rating scale
     return PredictionResponse(
         predicted_rating=round(value, 3),
-        model_name=predictor.metadata.get("model_name"),
+        model_name=get_metadata(predictor).get("model_name"),
     )
+
+
+class BatchRequest(BaseModel):
+    """A list of books to score in a single call (CSV batch upload)."""
+
+    items: list[BookFeatures]
+
+
+@app.post("/predict/batch")
+def predict_batch(request: BatchRequest):
+    """Score many books at once. The whole batch is predicted in a single
+    vectorised call, which is faster than one request per row."""
+    predictor = get_predictor()
+    items = request.items
+    if not items:
+        raise HTTPException(status_code=400, detail="No rows provided.")
+    if len(items) > 2000:
+        raise HTTPException(status_code=413, detail="Batch too large (max 2000 rows).")
+
+    frame = pd.DataFrame(
+        [{col: getattr(it, col) for col in RAW_INPUT_COLUMNS} for it in items]
+    )
+    try:
+        values = predictor.predict(frame)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Prediction failed: {exc}")
+
+    predictions = []
+    for it, value in zip(items, values):
+        rating = max(0.0, min(5.0, float(value)))
+        record = {col: getattr(it, col) for col in RAW_INPUT_COLUMNS}
+        record["predicted_rating"] = round(rating, 3)
+        predictions.append(record)
+
+    return {
+        "predictions": predictions,
+        "count": len(predictions),
+        "model_name": get_metadata(predictor).get("model_name"),
+    }
 
 
 if __name__ == "__main__":

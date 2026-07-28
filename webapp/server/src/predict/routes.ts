@@ -61,6 +61,37 @@ predictRouter.post("/", optionalAuth, async (req: AuthedRequest, res) => {
   });
 });
 
+const batchSchema = z.object({
+  items: z
+    .array(predictSchema)
+    .min(1, "Provide at least one row")
+    .max(2000, "Too many rows (max 2000)"),
+});
+
+/** Proxy a batch (CSV) prediction request to the Python ML service. */
+predictRouter.post("/batch", optionalAuth, async (req: AuthedRequest, res) => {
+  const parsed = batchSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+  }
+  try {
+    const response = await fetch(`${config.mlServiceUrl}/predict/batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed.data),
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      return res.status(502).json({ error: `Model service error: ${detail}` });
+    }
+    return res.json(await response.json());
+  } catch {
+    return res
+      .status(503)
+      .json({ error: "The prediction service is unavailable. Make sure the ML service is running." });
+  }
+});
+
 predictRouter.get("/history", requireAuth, async (req: AuthedRequest, res) => {
   const predictions = await prisma.prediction.findMany({
     where: { userId: req.user!.sub },

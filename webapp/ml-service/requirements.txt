@@ -2,8 +2,11 @@ fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 cloudpickle==3.1.2
-pandas>=2.3
-numpy>=2.0
-scikit-learn>=1.5
+# The exported model was fitted with scikit-learn 1.4.x (SimpleImputer had no
+# `_fill_dtype`, which 1.5 requires at transform time). These exact pins match
+# the versions verified to load and predict the artifact correctly.
+pandas==2.1.4
+numpy==1.26.3
+scikit-learn==1.4.0
 xgboost>=2.1
 catboost>=1.2

@@ -9,7 +9,7 @@ import { predictRouter } from "./predict/routes.js";
 const app = express();
 
 app.use(cors({ origin: config.clientOrigin, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: "6mb" })); // allow CSV batch prediction payloads
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok", service: "bookwise-api" }));
 
