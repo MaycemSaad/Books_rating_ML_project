@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-parchment-50 font-sans text-stone-700 antialiased;
+    background-image:
+      radial-gradient(60% 45% at 85% -5%, rgba(224, 179, 82, 0.14), transparent 60%),
+      radial-gradient(55% 40% at 0% 0%, rgba(36, 94, 68, 0.1), transparent 55%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  h1, h2, h3 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-parchment-200 bg-white shadow-soft;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-forest-700 text-white hover:bg-forest-800 shadow-glow;
+  }
+  .btn-gold {
+    @apply btn bg-gold-300 text-forest-900 hover:bg-gold-400;
+  }
+  .btn-ghost {
+    @apply btn border border-parchment-300 bg-white/70 text-forest-800 hover:bg-parchment-100;
+  }
+  .input {
+    @apply w-full rounded-xl border border-parchment-300 bg-white px-3.5 py-2.5 text-sm text-stone-800
+      placeholder:text-stone-400 outline-none transition focus:border-forest-500 focus:ring-2 focus:ring-forest-500/25;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-stone-500;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-parchment-300 bg-parchment-100 px-3 py-1 text-xs font-medium text-forest-700;
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-gold-200 bg-gold-50 px-3 py-1
+      text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-600;
+  }
+  .section-title {
+    @apply font-display text-3xl font-bold tracking-tight text-forest-800;
+  }
+}
+
+/* Warm slim scrollbar */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-parchment-300;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-forest-300;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
